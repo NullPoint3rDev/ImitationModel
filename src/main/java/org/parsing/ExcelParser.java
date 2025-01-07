@@ -1,9 +1,6 @@
 package org.parsing;
 
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modeling.Worker;
 import production.ProductionCenter;
@@ -17,139 +14,121 @@ import java.util.Map;
 
 public class ExcelParser {
 
-    public static ProductionLineModel parseExelFile(String filePath) throws IOException {
+    public static ProductionLineModel parseExcelFile(String filePath) throws IOException {
         try (FileInputStream fis = new FileInputStream(new File(filePath))) {
-            Workbook workBook = new XSSFWorkbook(fis);
-            Sheet scenarioSheet = workBook.getSheetAt(0);
-            Sheet productionCenterSheet = workBook.getSheetAt(1);
-            Sheet connectionSheet = workBook.getSheetAt(2);
+            Workbook workbook = new XSSFWorkbook(fis);
 
-            // Parsing scenario sheet
-            Row scenarioRow = scenarioSheet.getRow(1); // Assuming data starts from row 1 (skip header)
+            Sheet scenarioSheet = workbook.getSheetAt(0);
+            Sheet productionCenterSheet = workbook.getSheetAt(1);
+            Sheet connectionSheet = workbook.getSheetAt(2);
+
+            // Парсинг листа сценария (Scenario)
+            Row scenarioRow = scenarioSheet.getRow(1); // Первая строка данных (строка 0 - заголовок)
             int workersCount = 0;
             int detailsCount = 0;
 
-            // Check if the cell is numeric before parsing
-            if (scenarioRow.getCell(0).getCellType() == CellType.NUMERIC) {
-                workersCount = (int) scenarioRow.getCell(0).getNumericCellValue();
+            if (scenarioRow != null) {
+                workersCount = getCellNumericValue(scenarioRow, 0); // Колонка с количеством сотрудников
+                detailsCount = getCellNumericValue(scenarioRow, 1); // Колонка с количеством деталей
             }
 
-            if (scenarioRow.getCell(1).getCellType() == CellType.NUMERIC) {
-                detailsCount = (int) scenarioRow.getCell(1).getNumericCellValue();
-            }
+            System.out.println("Количество сотрудников: " + workersCount);
+            System.out.println("Количество деталей: " + detailsCount);
 
-            System.out.println("workersCount: " + workersCount);
-            System.out.println("detailsCount: " + detailsCount);
+            // Создание модели
+            ProductionLineModel model = new ProductionLineModel(1.0); // Шаг времени по умолчанию - 1.0
 
-            // Initialize model
-            ProductionLineModel model = new ProductionLineModel(1.0); // Default time step 1.0
-
-            // Create workers
+            // Добавление работников
             for (int i = 0; i < workersCount; i++) {
                 model.addWorker(new Worker(i + 1));
             }
 
-            // Create parts
+            // Инициализация деталей
             model.initializeParts(detailsCount);
 
-            // Parse ProductionCenter sheet
-            Map<Integer, ProductionCenter> productionCenters = new HashMap<>();
-            for (int i = 1; i < productionCenterSheet.getPhysicalNumberOfRows(); i++) {
-                Row row = productionCenterSheet.getRow(i); // Skip the header row
+            // Парсинг листа центров производства (ProductionCenter)
+            Map<String, ProductionCenter> productionCenters = new HashMap<>();
+            for (int i = 1; i < productionCenterSheet.getPhysicalNumberOfRows(); i++) { // Начинаем с 1, чтобы пропустить заголовок
+                Row row = productionCenterSheet.getRow(i);
                 if (row != null) {
-                    int id = 0;
-                    double performance = 0;
-                    int maxWorkersCount = 0;
-                    String name = "";
-
-                    // Read the id, name, performance, maxWorkersCount
-                    if (row.getCell(0).getCellType() == CellType.NUMERIC) {
-                        id = (int) row.getCell(0).getNumericCellValue();
-                    }
-
-                    if (row.getCell(1).getCellType() == CellType.STRING) {
-                        name = row.getCell(1).getStringCellValue();
-                    }
-
-                    if (row.getCell(2).getCellType() == CellType.NUMERIC) {
-                        performance = row.getCell(2).getNumericCellValue();
-                    }
-
-                    if (row.getCell(3).getCellType() == CellType.NUMERIC) {
-                        maxWorkersCount = (int) row.getCell(3).getNumericCellValue();
-                    }
+                    int id = getCellNumericValue(row, 0);
+                    String name = getCellStringValue(row, 1);
+                    double performance = getCellDoubleValue(row, 2);
+                    int maxWorkersCount = getCellNumericValue(row, 3);
 
                     ProductionCenter center = new ProductionCenter(id, maxWorkersCount, performance);
-                    productionCenters.put(id, center);
+                    productionCenters.put(name, center);
                     model.addProductionCenter(center);
 
-                    System.out.println("Production Center ID: " + id + ", Name: " + name +
-                            ", Performance: " + performance + ", Max Workers Count: " + maxWorkersCount);
+                    System.out.println("Центр производства: ID=" + id + ", Имя=" + name +
+                            ", Производительность=" + performance + ", Макс. сотрудников=" + maxWorkersCount);
                 }
             }
 
-            // Parsing Connection sheet
-            for (int i = 1; i < connectionSheet.getPhysicalNumberOfRows(); i++) {
-                Row row = connectionSheet.getRow(i); // Skip the header row
+            // Парсинг листа связей (Connection)
+            for (int i = 1; i < connectionSheet.getPhysicalNumberOfRows(); i++) { // Начинаем с 1, чтобы пропустить заголовок
+                Row row = connectionSheet.getRow(i);
                 if (row != null) {
-                    String sourceCenterName = "";
-                    String destCenterName = "";
+                    String sourceCenterName = getCellStringValue(row, 0);
+                    String destCenterName = getCellStringValue(row, 1);
 
-                    // Read source and destination center names
-                    if (row.getCell(0).getCellType() == CellType.STRING) {
-                        sourceCenterName = row.getCell(0).getStringCellValue();
-                    }
-
-                    if (row.getCell(1).getCellType() == CellType.STRING) {
-                        destCenterName = row.getCell(1).getStringCellValue();
-                    }
-
-                    ProductionCenter sourceCenter = findCenterByName(productionCenters, sourceCenterName);
-                    ProductionCenter destCenter = findCenterByName(productionCenters, destCenterName);
+                    ProductionCenter sourceCenter = productionCenters.get(sourceCenterName);
+                    ProductionCenter destCenter = productionCenters.get(destCenterName);
 
                     if (sourceCenter != null && destCenter != null) {
                         model.addConnection(sourceCenter, destCenter);
-                        System.out.println("Source Center: " + sourceCenterName + ", Destination Center: " + destCenterName);
+                        System.out.println("Связь: Источник=" + sourceCenterName + ", Назначение=" + destCenterName);
                     } else {
-                        System.out.println("Error: Could not find connection between " + sourceCenterName + " and " + destCenterName);
+                        System.out.println("Ошибка: Не удалось найти связь между " + sourceCenterName + " и " + destCenterName);
                     }
                 }
             }
+
             return model;
         }
     }
 
+    // Метод для чтения числового значения
     private static int getCellNumericValue(Row row, int cellIndex) {
         try {
-            if (row.getCell(cellIndex) != null && row.getCell(cellIndex).getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC) {
-                return (int) row.getCell(cellIndex).getNumericCellValue();
-            } else if (row.getCell(cellIndex) != null && row.getCell(cellIndex).getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
-                return Integer.parseInt(row.getCell(cellIndex).getStringCellValue().trim());
+            Cell cell = row.getCell(cellIndex);
+            if (cell != null && cell.getCellType() == CellType.NUMERIC) {
+                return (int) cell.getNumericCellValue();
+            } else if (cell != null && cell.getCellType() == CellType.STRING) {
+                String value = cell.getStringCellValue().trim();
+                if (value.matches("\\d+")) {
+                    return Integer.parseInt(value);
+                }
             }
         } catch (Exception e) {
-            System.out.println("Error reading numeric value at row " + row.getRowNum() + ", cell " + cellIndex + ": " + e.getMessage());
+            System.out.println("Ошибка чтения числового значения: строка " + row.getRowNum() + ", ячейка " + cellIndex + " (" + e.getMessage() + ")");
         }
-        return 0; // Default value if there's an error
+        return 0; // Возвращаем 0 в случае ошибки
     }
 
+    // Метод для чтения строкового значения
     private static String getCellStringValue(Row row, int cellIndex) {
         try {
-            if (row.getCell(cellIndex) != null && row.getCell(cellIndex).getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
-                return row.getCell(cellIndex).getStringCellValue().trim();
+            Cell cell = row.getCell(cellIndex);
+            if (cell != null && cell.getCellType() == CellType.STRING) {
+                return cell.getStringCellValue().trim();
             }
         } catch (Exception e) {
-            System.out.println("Error reading string value at row " + row.getRowNum() + ", cell " + cellIndex + ": " + e.getMessage());
+            System.out.println("Ошибка чтения строкового значения: строка " + row.getRowNum() + ", ячейка " + cellIndex + " (" + e.getMessage() + ")");
         }
-        return ""; // Default value if there's an error
+        return ""; // Возвращаем пустую строку в случае ошибки
     }
 
-    private static ProductionCenter findCenterByName(Map<Integer, ProductionCenter> centers, String name) {
-        // This assumes the name is unique and follows the format "ProductionCenter #N"
-        for (ProductionCenter center : centers.values()) {
-            if (center.getName().equals(name)) {
-                return center;
+    // Метод для чтения чисел с плавающей точкой
+    private static double getCellDoubleValue(Row row, int cellIndex) {
+        try {
+            Cell cell = row.getCell(cellIndex);
+            if (cell != null && cell.getCellType() == CellType.NUMERIC) {
+                return cell.getNumericCellValue();
             }
+        } catch (Exception e) {
+            System.out.println("Ошибка чтения значения с плавающей точкой: строка " + row.getRowNum() + ", ячейка " + cellIndex + " (" + e.getMessage() + ")");
         }
-        return null;
+        return 0.0; // Возвращаем 0.0 в случае ошибки
     }
 }
