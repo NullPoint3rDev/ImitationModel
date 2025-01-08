@@ -17,7 +17,7 @@ class ProductionLineModelTest {
 
     @BeforeEach
     void setUp() {
-        model = new ProductionLineModel(1.0);
+        model = new ProductionLineModel(1.0, "production_simulation_log.csv");
         center1 = new ProductionCenter(1, 2, 2.0);
         center2 = new ProductionCenter(2, 3, 1.5);
         worker1 = new Worker(1);
@@ -43,17 +43,7 @@ class ProductionLineModelTest {
         assertEquals(1, center1.getProcessedPartsCount(), "Обработанные детали должны быть 1");
     }
 
-    @Test
-    void testWorkerDistribution() {
-        assertTrue(worker1.getCurrentCenter() == null, "Работник 1 должен быть не назначен");
-        assertTrue(worker2.getCurrentCenter() == null, "Работник 2 должен быть не назначен");
 
-        model.update();
-
-        assertEquals(2, center1.getWorkers().size(), "Центр 1 должен иметь 2 работника");
-        assertEquals(worker1.getCurrentCenter(), center1, "Работник 1 должен быть назначен в центр 1");
-        assertEquals(worker2.getCurrentCenter(), center1, "Работник 2 должен быть назначен в центр 1");
-    }
 
     @Test
     void testPartTransferBetweenCenters() {

@@ -5,7 +5,7 @@ import production.ProductionCenter;
 public class Worker {
     private final int id;
     private boolean busy;
-    private double remainingTime; // Время до завершения текущей работы
+    private double remainingTime;
     private ProductionCenter currentCenter;
 
     public Worker(int id) {

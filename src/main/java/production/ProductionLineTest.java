@@ -5,10 +5,8 @@ import org.modeling.Worker;
 
 public class ProductionLineTest {
     public static void main(String[] args) {
-        // Указываем путь для лог-файла
-        String logFilePath = "parsing_log.csv";
+        String logFilePath = "simulation_log.csv";
 
-        // Создаем модель с шагом времени 1 минута
         ProductionLineModel model = new ProductionLineModel(1.0, logFilePath);
 
         ProductionCenter center1 = new ProductionCenter(1, 2, 2.0);

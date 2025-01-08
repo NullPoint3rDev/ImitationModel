@@ -1,6 +1,4 @@
-package org.parsing;
-
-import production.ProductionCenter;
+package production;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -14,7 +12,7 @@ public class SimulationLogger {
         this.filePath = filePath;
         try {
             writer = new FileWriter(filePath);
-
+            // Записываем заголовки
             writer.append("Time,Center ID,Center Name,Workers,Buffers,Processed Parts,Connections\n");
         } catch (IOException e) {
             e.printStackTrace();
@@ -24,15 +22,15 @@ public class SimulationLogger {
     public void logState(double currentTime, List<ProductionCenter> productionCenters) {
         try {
             for (ProductionCenter center : productionCenters) {
-                writer.append(String.format("%.2f,%s,%d/%d,%d,%d,%d,%d\n",
+                writer.append(String.format("%.2f,%d,%s,%d/%d,%d,%d,%d\n",
                         currentTime,
-                        center.getName(), // %s - для имени центра (строка)
-                        center.getWorkers().size(), // %d - текущее количество работников
-                        center.getMaxWorkers(), // %d - максимальное количество работников
-                        center.getId(), // %d - ID центра
-                        center.getBufferSize(), // %d - размер буфера
-                        center.getConnections().size(), // %d - количество соединений
-                        center.getProcessedPartsCount() // %d - обработанные детали
+                        center.getId(),
+                        center.getName(),
+                        center.getWorkers().size(),
+                        center.getMaxWorkers(),
+                        center.getBufferSize(),
+                        center.getConnections().size(),
+                        center.getProcessedPartsCount()
                 ));
             }
         } catch (IOException e) {

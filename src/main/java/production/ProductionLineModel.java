@@ -3,18 +3,17 @@ package production;
 import org.modeling.Connection;
 import org.modeling.Part;
 import org.modeling.Worker;
-import org.parsing.SimulationLogger;
 
 import java.util.*;
 
 public class ProductionLineModel {
-    private final List<ProductionCenter> productionCenters;
-    private final List<Worker> workers;
+    private List<ProductionCenter> productionCenters;
+    private List<Worker> workers;
     private List<Connection> connections;
-    private final Queue<Part> partsQueue;
+    private Queue<Part> partsQueue;
     private double currentTime;
-    private final double timeStep;
-    private SimulationLogger logger;
+    private double timeStep;
+    private production.SimulationLogger logger;
 
     public ProductionLineModel(double timeStep, String logFilePath) {
         this.productionCenters = new ArrayList<>();
@@ -23,40 +22,43 @@ public class ProductionLineModel {
         this.partsQueue = new LinkedList<>();
         this.currentTime = 0.0;
         this.timeStep = timeStep;
-        this.logger = new SimulationLogger(logFilePath);
-    }
-
-    public ProductionLineModel(double timeStep) {
-        this.productionCenters = new ArrayList<>();
-        this.workers = new ArrayList<>();
-        this.connections = new ArrayList<>();
-        this.partsQueue = new LinkedList<>();
-        this.currentTime = 0.0;
-        this.timeStep = timeStep;
-        this.logger = new SimulationLogger("simulation_log.csv");
+        this.logger = new production.SimulationLogger(logFilePath);
     }
 
     public void addProductionCenter(ProductionCenter center) {
         productionCenters.add(center);
     }
 
-    public void addConnection(ProductionCenter from, ProductionCenter to) {
-        Connection connection = new Connection(from, to);
-        connections.add(connection);
-        from.addConnection(to); // Убедитесь, что этот метод реализован в ProductionCenter
-    }
-
-
     public void addWorker(Worker worker) {
         workers.add(worker);
     }
 
+    public void addConnection(ProductionCenter from, ProductionCenter to) {
+        Connection connection = new Connection(from, to);
+        connections.add(connection);
+        from.addConnection(to);
+    }
+
     public void initializeParts(int count) {
-        for (int i = 1; i <= count; i++) {
-            Part part = new Part(i);
+        for (int i = 0; i < count; i++) {
+            Part part = new Part(i + 1);
             partsQueue.offer(part);
             if (!productionCenters.isEmpty()) {
                 productionCenters.get(0).addPartToBuffer(part);
+            }
+        }
+    }
+
+    private void distributeWorkers() {
+        for (ProductionCenter center : productionCenters) {
+            while (center.getBufferSize() > 0 && center.getWorkers().size() < center.getMaxWorkers()) {
+                Optional<Worker> freeWorker = workers.stream()
+                        .filter(worker -> !worker.isBusy() && worker.getCurrentCenter() != center)
+                        .findFirst();
+                freeWorker.ifPresent(worker -> {
+                    worker.moveTo(center);
+                    center.addWorker(worker);
+                });
             }
         }
     }
@@ -69,6 +71,7 @@ public class ProductionLineModel {
         for (ProductionCenter center : productionCenters) {
             center.processingParts();
         }
+
         for (Connection connection : connections) {
             ProductionCenter from = connection.getFromCenter();
             Part part = from.getPartFromBuffer();
@@ -79,21 +82,8 @@ public class ProductionLineModel {
 
         distributeWorkers();
         currentTime += timeStep;
-        logger.logState(currentTime, productionCenters);
-    }
 
-    private void distributeWorkers() {
-        for (ProductionCenter center : productionCenters) {
-            while (center.getBufferSize() > 0 && center.getWorkers().size() < center.maxWorkers) {
-                Optional<Worker> freeWorker = workers.stream()
-                        .filter(worker -> !worker.isBusy())
-                        .findFirst();
-                freeWorker.ifPresent(worker -> {
-                    center.addWorker(worker);
-                    worker.moveTo(center);
-                });
-            }
-        }
+        logger.logState(currentTime, productionCenters);
     }
 
     public void logState() {
@@ -115,6 +105,7 @@ public class ProductionLineModel {
             update();
             logState();
         }
+
         logger.close();
     }
 }
